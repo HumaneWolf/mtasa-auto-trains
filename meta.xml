@@ -1,0 +1,5 @@
+<meta>
+    <info author="HumaneWolf" version="0.0.1" name="Auto-Trains" description="Self driving trains - Now in GTA San Andreas" type="script" />
+
+    <script src="trains_s.lua" type="server"></script>
+</meta>
