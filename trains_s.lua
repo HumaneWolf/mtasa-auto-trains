@@ -23,9 +23,9 @@ local trainNextStation = {}
 local trainStopped = {}
 
 
---- Adding trains
+--- Adding stuff
 function addTrain(posX, posY, posZ, nextStation)
-    local train = createVehicle(vehicleId, posX, posY, posZ)
+    local train = createVehicle(vehicleId, posX, posY, posZ, 0, 0, 0)
     setVehicleColor(train, 255, 0, 0,  255, 0, 0)
     setTrainDerailable(train, false)
     setVehicleDamageProof(train, true)
@@ -34,12 +34,46 @@ function addTrain(posX, posY, posZ, nextStation)
     table.insert(trains, train)
     table.insert(trainNextStation, nextStation)
     table.insert(trainStopped, -1)
+
+    return train, index
+end
+
+
+function addSingleUseTrain(posX, posY, posZ, nextStation)
+    local train, index = addTrain(posX, posY, posZ, nextStation)
+    
+    function trainLeft(player)
+        destroyElement(train)
+        table.remove(trains, index)
+        table.remove(trainNextStation, index)
+        table.remove(trainStopped, index)
+    end
+    addEventHandler('onVehicleExit', train, trainLeft)
+
+    return train
+end
+
+
+function addStartPoint(x, y, z, tx, ty, tz, station)
+    local marker = createMarker(x, y, z, 'cylinder', 1, 255, 255, 255, 150)
+    local nextStat = getNextStation(station)
+
+    createBlipAttachedTo(marker, 41, 2,  0, 0, 0, 255,  0, 1500)
+
+    -- Add a handler to create a train and teleport the player.
+    function startPointHit(element, dimensionMatch)
+        if dimensionMatch and getElementType(element) == 'player' then
+            local train = addSingleUseTrain(tx, ty, tz, nextStat)
+            warpPedIntoVehicle(element, train)
+        end
+    end
+    addEventHandler('onMarkerHit', marker, startPointHit)
 end
 
 
 --- Utils
 function getDistance(ax, ay, az, bx, by, bz)
-    return math.abs(math.pow( math.pow((bx - ax), 2) + math.pow((by - ay), 2) + math.pow((bz - az), 2) , 0.5))
+    return math.abs(getDistanceBetweenPoints3D(ax, ay, az, bx, by, bz))
 end
 
 
@@ -64,6 +98,7 @@ function updateSpeed(trainIndex)
     if dist < stationArea then
         setTrainSpeed(train, 0)
         trainStopped[trainIndex] = 0
+        setElementFrozen(train, true)
 
     elseif dist < (breakingDistance + stationArea) then
         local speed = (baseSpeed * (dist / (breakingDistance + stationArea))) * -1
@@ -73,6 +108,8 @@ function updateSpeed(trainIndex)
         local speed = getTrainSpeed(train)
         if speed < baseSpeed then
             setTrainSpeed(train, (speed + 0.035) * -1)
+        else 
+            setTrainSpeed(train, baseSpeed * -1)
         end
     end
 end
@@ -84,6 +121,7 @@ function updateAtStation(trainIndex)
     if trainStopped[trainIndex] > stationWaitingTime then
         trainNextStation[trainIndex] = getNextStation(trainNextStation[trainIndex])
         trainStopped[trainIndex] = -1
+        setElementFrozen(trains[trainIndex], false)
     end
 end
 
@@ -102,8 +140,12 @@ end
 --- Init
 function onResourceStart(resource)
     if resource == getThisResource() then
-        -- Spawn trains
-        addTrain(1710, -1930, 14, 1)
+        -- Add start points
+        addStartPoint(1757, -1944, 13, 1719, -1940, 14, 1) -- Unity
+        addStartPoint(2857, 1314.5, 11, 2857, 1314.5, 11, 2) -- Linden
+        addStartPoint(1437, 2621, 11, 1437, 2621, 11, 3) -- Yellow
+        addStartPoint(-1972, 118, 27, -1936, 187, 27, 4) -- San Fierro
+        addStartPoint(826.5, -1353.6, 13, 819, -1363, 0, 5) -- Market
 
         -- Start ticks
         setTimer(runTick, tickSpeed, 0)
